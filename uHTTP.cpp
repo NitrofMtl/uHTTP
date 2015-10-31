@@ -512,13 +512,3 @@ void uHTTP::send_JSON_headers(EthernetClient response){
   response.println();
 
 }
-void uHTTP::delete_char(char *str) {
-  int len = strlen(str);
-  int i = 0;
-  for (; i < len - 1 ; i++)
-  {
-   str[i] = str[i+1];
- }
-
- str[i] = '\0';
-}
