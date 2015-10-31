@@ -55,6 +55,7 @@
 #define TEXT_CSS    3
 #define TEXT_XML    4
 #define TEXT_JSON   5
+#define X_ICON      6
 
 typedef struct header_t{
     char type[uHTTP_TYPE_SIZE];
@@ -112,7 +113,7 @@ class uHTTP : public EthernetServer {
 
         void post_JSON(String output, EthernetClient response);
         void send_JSON_headers(EthernetClient response);
-
+    
 };
 
 #endif
