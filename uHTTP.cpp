@@ -307,8 +307,8 @@ return client;
 
 void uHTTP::webFile_Post( char url[32], EthernetClient response){
 
-
-  if(SD.exists(url)){
+  if(SD.exists(url)){ 
+    Serial.println("file exsist");
     File webFile = SD.open(url, FILE_READ);
     if(webFile){
       char *ext = strchr(url, '.') + 1;
@@ -317,22 +317,23 @@ void uHTTP::webFile_Post( char url[32], EthernetClient response){
                 //Serial.println(url);
 
       if(strcmp(ext, "js") == 0) ctype = TEXT_JS;
+      else if(strcmp(ext, "mjs") == 0) ctype = TEXT_JS; // rename web library *.min.js to mjs to fit FAT format of sd card
       else if(strcmp(ext, "css") == 0) ctype = TEXT_CSS;
       else if(strcmp(ext, "htm") == 0) ctype = TEXT_HTML;
       else if(strcmp(ext, "xml") == 0) ctype = TEXT_XML;
       else if(strcmp(ext, "jsn") == 0) ctype = TEXT_JSON;
-
+      else if(strcmp(ext,"ico") == 0) ctype = X_ICON;
       send_headers(200, ctype, response);
 
       while(webFile.available()) response.write(webFile.read());
       webFile.close();
-    }/*else{
-      render(500, TEXT_HTML, response);
-    }
-  }else{
-    render(404, TEXT_HTML, response);
-    */
-  }
+    }//else{
+      //render(500, TEXT_HTML, response);
+    //}
+  }//else{
+   // render(404, TEXT_HTML, response);
+    
+  //}
 }
 
 // header system for file web file sending
@@ -364,6 +365,9 @@ void uHTTP::send_headers(uint16_t code, uint8_t ctype, EthernetClient response){
     break;
     case TEXT_XML:
     response.println("text/xml");
+    break;
+    case X_ICON:
+    response.println("image/x-icon");
     break;
     case TEXT_JSON:
     response.println("text/json");
@@ -474,8 +478,11 @@ void uHTTP::render(uint16_t code, const char *body, EthernetClient response){
 
 //get request
 bool uHTTP::get_request( const char *uri, EthernetClient response){
-  if(method(uHTTP_METHOD_GET) && (strcmp(this->uri(1), uri) == 0)){
+  if((method(uHTTP_METHOD_GET) && (strcmp(this->uri(1), uri) == 0))){
     return true;
+  }
+  else {
+    return false;
   }
 }
 
@@ -484,7 +491,9 @@ bool uHTTP::put_request(const char *uri, EthernetClient response){
   if(method(uHTTP_METHOD_PUT) && (strcmp(this->uri(1), uri) == 0)){
     return true;
   }
-
+  else {
+    return false;
+  }
 }
 
 void uHTTP::post_JSON(String output, EthernetClient response){
@@ -501,5 +510,15 @@ void uHTTP::send_JSON_headers(EthernetClient response){
   response.println("Access-Control-Allow-Origin:*");
   response.println("Content-Type: application/json");
   response.println();
-  
+
+}
+void uHTTP::delete_char(char *str) {
+  int len = strlen(str);
+  int i = 0;
+  for (; i < len - 1 ; i++)
+  {
+   str[i] = str[i+1];
+ }
+
+ str[i] = '\0';
 }
