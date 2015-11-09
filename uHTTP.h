@@ -75,10 +75,11 @@ class uHTTP : public EthernetServer {
 
         char *__uri;
         char *__query;
-        char *__body;
+
         const char *parse(const char *needle, char *haystack, const char*sep);
        
     public:
+        char *__body;
         uHTTP();
         uHTTP(uint16_t port);
         ~uHTTP();
@@ -113,7 +114,6 @@ class uHTTP : public EthernetServer {
 
         void post_JSON(String output, EthernetClient response);
         void send_JSON_headers(EthernetClient response);
-    
 };
 
 #endif
