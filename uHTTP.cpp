@@ -76,7 +76,8 @@
       char c = client.read();
 
       (c == '\r' || c == '\n') ? cr++ : cr = 0;
-
+      //if (c == '\r') Serial.println(); //for debuging
+      //Serial.print(c);                  //for debuging
       switch(state){
        case METHOD:
        if(c == ' '){
@@ -278,19 +279,18 @@ return client;
 /**
  *  Get request data value by key
  *
- *  @param const __FlashStringHelper *key
  *  @return *char value
  **/
  const char *uHTTP::data(const char *key){
   return parse(key, __body, "&");
 }
 
+
 /**
  *  Find needle on haystack
  *
  *  @param const char *needle
  *  @param char *haystack
- *  @param __FlashStringHelper *separator
  *  @return *char value
  **/
  const char *uHTTP::parse(const char *needle, char *haystack, const char *sep){
@@ -308,13 +308,12 @@ return client;
 void uHTTP::webFile_Post( char url[32], EthernetClient response){
 
   if(SD.exists(url)){ 
-    Serial.println("file exsist");
+    //Serial.println("file exsist"); //for debuggin
     File webFile = SD.open(url, FILE_READ);
     if(webFile){
       char *ext = strchr(url, '.') + 1;
       uint8_t ctype = TEXT_PLAIN;
 
-                //Serial.println(url);
 
       if(strcmp(ext, "js") == 0) ctype = TEXT_JS;
       else if(strcmp(ext, "mjs") == 0) ctype = TEXT_JS; // rename web library *.min.js to mjs to fit FAT format of sd card
@@ -327,13 +326,8 @@ void uHTTP::webFile_Post( char url[32], EthernetClient response){
 
       while(webFile.available()) response.write(webFile.read());
       webFile.close();
-    }//else{
-      //render(500, TEXT_HTML, response);
-    //}
-  }//else{
-   // render(404, TEXT_HTML, response);
-    
-  //}
+    }
+  }
 }
 
 // header system for file web file sending
@@ -345,6 +339,9 @@ void uHTTP::send_headers(uint16_t code, uint8_t ctype, EthernetClient response){
     response.println("200 OK");
     break;
     case 404:
+       case 302:
+            response.println("302 Found");
+            break;
     response.println("404 Not Found");
     break;
     case 500:
@@ -395,15 +392,15 @@ void uHTTP::send_method_headers(const char *uri, EthernetClient response){
 
 //header for rest server
 void uHTTP::send_headers(uint16_t code, EthernetClient response){
-    //header_t head = head();
-  header_t head = __head;
+    header_t head = __head;
+  //header_t head = __head;
 
   response.print("HTTP/1.1");
   response.print(" ");
   switch(code){
     case 200:
     response.println("200 OK");
-    //response.println("Content-Type: application/json");
+    response.println("Content-Type: application/json");
     if(strlen(head.orig)){
       response.print("Access-Control-Allow-Origin: ");
       response.println(head.orig);
@@ -413,15 +410,9 @@ void uHTTP::send_headers(uint16_t code, EthernetClient response){
       response.println("Access-Control-Max-Age: 1000");
     }
     break;
-    case 302:
-    response.println("302 Found");
-    break;
-    case 401:
-    response.println("401 Unauthorized");
-    response.println("WWW-Authenticate: Basic realm=\"uHTTP\"");
-    break;
-    case 404:
-    response.println("404 Not Found");
+    case 204:
+    response.println("204 OK");
+    response.println("100 continue");
     break;
   }
 }
@@ -488,6 +479,7 @@ bool uHTTP::get_request( const char *uri, EthernetClient response){
 
 
 bool uHTTP::put_request(const char *uri, EthernetClient response){
+send_headers(200,response);
   if(method(uHTTP_METHOD_PUT) && (strcmp(this->uri(1), uri) == 0)){
     return true;
   }
