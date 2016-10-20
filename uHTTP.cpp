@@ -21,6 +21,23 @@
 
 #include "uHTTP.h"
 
+
+/** 
+ * uHTTP struct request 
+ **/
+  //constructor for the request handler
+
+uint8_t uHTTP_request_REQUEST_COUNTER = 0;
+
+uHTTP_request::uHTTP_request(const char *uId, void (*uCallback)() ){
+  id = uId;
+  callback = uCallback;
+  uHTTP_request_REQUEST_COUNTER++;
+}
+
+
+
+
 /**
  *	uHTTP constructor
  **/
@@ -39,6 +56,8 @@
    __body = new char[uHTTP_BODY_SIZE];
  }
 
+
+
 /**
  *	uHTTP destructor
  **/
@@ -47,6 +66,11 @@
    delete [] __query;
    delete [] __body;
  }
+
+void uHTTP::uHTTPclient(EthernetClient *response){
+  this->response = response;
+}
+
 
 /**
  *	Process HTTP request
@@ -62,7 +86,7 @@
   memset(&__head, 0, sizeof(__head));
 
   if(client = EthernetServer::available()){
-    uint8_t cursor = 0, cr = 0;
+    uint16_t cursor = 0, cr = 0;
     char buffer[uHTTP_BUFFER_SIZE] = {0};
     bool sub = false;
 
@@ -274,6 +298,7 @@ return client;
  **/
  const char *uHTTP::body(){
    return __body;
+
  }
 
 /**
@@ -304,171 +329,266 @@ return client;
   return (sub) ? strchr(sub, '=') + 1 : NULL;
 }
 
+/*uHTTP_METHOD_OPTIONS 0
+uHTTP_METHOD_GET     1
+uHTTP_METHOD_HEAD    2
+uHTTP_METHOD_POST    3
+uHTTP_METHOD_PUT     4
+uHTTP_METHOD_PATCH   5
+uHTTP_METHOD_DELETE  6
+uHTTP_METHOD_TRACE   7
+uHTTP_METHOD_CONNECT 8*/
 
-void uHTTP::webFile_Post( char url[32], EthernetClient response){
+void uHTTP::requestHandler(){
 
-  if(SD.exists(url)){ 
-    //Serial.println("file exsist"); //for debuggin
-    File webFile = SD.open(url, FILE_READ);
-    if(webFile){
-      char *ext = strchr(url, '.') + 1;
-      uint8_t ctype = TEXT_PLAIN;
+  char url[uHTTP_URI_SIZE];
+  if (*response = available()) {
 
+    bool requestFound = false;
+    uint8_t thisMethod = method();
+    //Serial.println("receive request");
+    switch (thisMethod) {
+      case uHTTP_METHOD_GET:
+        if (uri("/") ) {
+          strcpy(url, home_page); // if nothing requested, send default page
+          send_headers(200);
+          if(webFile_Post(url)) break; //send default page
+        }
+        for(int i=0; i<sizeGetContainer; i++) {     //scan request container
+          if(strcmp(this->uri(1), container_Get[i].id) == 0){
+            container_Get[i].callback();
+            requestFound = true;
+            break;
+          }
+        }              
+        if(requestFound) break;// break if get request have been found on the container
+        strcpy(url, uri());
+        if (webFile_Post(url)) break; //send other file if they exist on sd card        
+        render(404, TEXT_HTML); //if not send error page
+        break;
 
-      if(strcmp(ext, "js") == 0) ctype = TEXT_JS;
-      else if(strcmp(ext, "mjs") == 0) ctype = TEXT_JS; // rename web library *.min.js to mjs to fit FAT format of sd card
-      else if(strcmp(ext, "css") == 0) ctype = TEXT_CSS;
-      else if(strcmp(ext, "htm") == 0) ctype = TEXT_HTML;
-      else if(strcmp(ext, "xml") == 0) ctype = TEXT_XML;
-      else if(strcmp(ext, "jsn") == 0) ctype = TEXT_JSON;
-      else if(strcmp(ext,"ico") == 0) ctype = X_ICON;
-      send_headers(200, ctype, response);
+      case uHTTP_METHOD_HEAD: //identical to GET except that the server MUST NOT return a message-body in the response
+               if (uri("/") ) {
+          strcpy(url, home_page); // if nothing requested, send default page
+          send_headers(200);
+          if(webFile_Post_Head(url)) break; //send sd webfile headers
+        }
+        for(int i=0; i<sizeGetContainer; i++) {     //scan request container
+          if(strcmp(this->uri(1), container_Get[i].id) == 0){
+            send_JSON_headers(); //will have to modify request structure for head method can automaticly identify head type response
+            requestFound = true;
+            break;
+          }
+        }              
+        if(requestFound) break;// break if get request have been found on the container
+        strcpy(url, uri());
+        if (webFile_Post_Head(url)) break; //send other file headers if they exist on sd card        
+        send_headers(404, TEXT_HTML); //if not send error headers
+        break;
 
-      while(webFile.available()) response.write(webFile.read());
-      webFile.close();
+      case uHTTP_METHOD_PUT:
+      //Serial.print("put request= "); Serial.println(this->uri(1));
+        for(int i=0; i<sizePutContainer; i++) {
+          if(strcmp(this->uri(1), container_Put[i].id) == 0){
+            container_Put[i].callback();
+            response->println("HTTP/1.0 200 OK\r\n");
+            requestFound = true;
+            break;
+          }
+        }
+        if(!requestFound)  render(404, TEXT_HTML); //if request not exist, send error page
+        break;
+
+      case uHTTP_METHOD_OPTIONS:
+        send_headers(200);
     }
+
+  response->stop();
+  }
+}
+
+bool uHTTP::webFile_Post(char url[32]){
+  if(!SD.exists(url)) return false; //if file do not exist, break function
+
+  File webFile = SD.open(url, FILE_READ);
+  if(webFile){ 
+    char *ext = strchr(url, '.') + 1;
+    uint8_t ctype = TEXT_PLAIN;
+
+    if(strcmp(ext, "js") == 0) ctype = TEXT_JS;
+    else if(strcmp(ext, "mjs") == 0) ctype = TEXT_JS; // rename web library *.min.js to mjs to fit FAT format of sd card
+    else if(strcmp(ext, "jsx") == 0) ctype = TEXT_JS; //name app extension .js to jsx to fit FAT format of sd card
+    else if(strcmp(ext, "css") == 0) ctype = TEXT_CSS;
+    else if(strcmp(ext, "htm") == 0) ctype = TEXT_HTML;
+    else if(strcmp(ext, "xml") == 0) ctype = TEXT_XML;
+    else if(strcmp(ext, "jsn") == 0) ctype = TEXT_JSON;
+    else if(strcmp(ext,"ico") == 0) ctype = X_ICON;
+    send_headers(200, ctype);
+
+    while(webFile.available()) response->write(webFile.read());
+    webFile.close();
+    return true;
+  }
+}
+
+bool uHTTP::webFile_Post_Head(char url[32]){
+  if(!SD.exists(url)) return false; //if file do not exist, break function
+
+  File webFile = SD.open(url, FILE_READ);
+  if(webFile){ 
+    char *ext = strchr(url, '.') + 1;
+    uint8_t ctype = TEXT_PLAIN;
+
+    if(strcmp(ext, "js") == 0) ctype = TEXT_JS;
+    else if(strcmp(ext, "mjs") == 0) ctype = TEXT_JS; // rename web library *.min.js to mjs to fit FAT format of sd card
+    else if(strcmp(ext, "jsx") == 0) ctype = TEXT_JS; //name app extension .js to jsx to fit FAT format of sd card
+    else if(strcmp(ext, "css") == 0) ctype = TEXT_CSS;
+    else if(strcmp(ext, "htm") == 0) ctype = TEXT_HTML;
+    else if(strcmp(ext, "xml") == 0) ctype = TEXT_XML;
+    else if(strcmp(ext, "jsn") == 0) ctype = TEXT_JSON;
+    else if(strcmp(ext,"ico") == 0) ctype = X_ICON;
+    send_headers(200, ctype);
+
+    webFile.close();
+    return true;
   }
 }
 
 // header system for file web file sending
-void uHTTP::send_headers(uint16_t code, uint8_t ctype, EthernetClient response){
-  response.print("HTTP/1.1 ");
+void uHTTP::send_headers(uint16_t code, uint8_t ctype){
+  response->print("HTTP/1.1 ");
 
   switch(code){
     case 200:
-    response.println("200 OK");
+    response->println("200 OK");
+    response->println("Access-Control-Allow-Origin: *");
+    break;
+    case 302:
+    response->println("302 Found");
     break;
     case 404:
-       case 302:
-            response.println("302 Found");
-            break;
-    response.println("404 Not Found");
+    response->println("404 Not Found");
     break;
     case 500:
-    response.println("500 Internal Server Error");
+    response->println("500 Internal Server Error");
     break;
   }
 
-  response.print("Content-Type: ");
+  response->print("Content-Type: ");
   switch(ctype){
     case TEXT_JS:
-    response.println("text/javascript");
+    response->println("text/javascript");
     break;
     case TEXT_CSS:
-    response.println("text/css");
+    response->println("text/css");
     break;
     case TEXT_HTML:
-    response.println("text/html");
+    response->println("text/html");
     break;
     case TEXT_XML:
-    response.println("text/xml");
+    response->println("text/xml");
     break;
     case X_ICON:
-    response.println("image/x-icon");
+    response->println("image/x-icon");
     break;
     case TEXT_JSON:
-    response.println("text/json");
+    response->println("text/json");
     break;
     default:
-    response.println("text/plain");
+    response->println("text/plain");
     break;
   }
-  response.println("Connection: close");
-  response.println();
+  response->println("Connection: close");
+  response->println();
 }
 
 
 
 
 //method header selector for rest server
-void uHTTP::send_method_headers(const char *uri, EthernetClient response){
+void uHTTP::send_method_headers(const char *uri){
   if(method(uHTTP_METHOD_GET))
-    send_headers(302, response);
+    send_headers(302);
   else if(method(uHTTP_METHOD_OPTIONS)) 
-    send_headers(200, response);
+    send_headers(200);
   else 
-    send_headers(404, response);
+    send_headers(404);
 }
 
 //header for rest server
-void uHTTP::send_headers(uint16_t code, EthernetClient response){
+void uHTTP::send_headers(uint16_t code){
     header_t head = __head;
-  //header_t head = __head;
 
-  response.print("HTTP/1.1");
-  response.print(" ");
+  response->print("HTTP/1.1");
+  response->print(" ");
   switch(code){
     case 200:
-    response.println("200 OK");
-    response.println("Content-Type: application/json");
+    response->println("200 OK");
+    //response.println("Content-Type: application/json");
     if(strlen(head.orig)){
-      response.print("Access-Control-Allow-Origin: ");
-      response.println(head.orig);
-      response.println("Access-Control-Allow-Methods: GET,PUT");
-      response.println("Access-Control-Allow-Headers: Authorization, Content-Type");
-      response.println("Access-Control-Allow-Credentials: true");
-      response.println("Access-Control-Max-Age: 1000");
+      response->print("Access-Control-Allow-Origin: ");
+      response->println(head.orig);
+      response->println("Access-Control-Allow-Methods: GET,PUT,HEAD");
+      response->println("Access-Control-Allow-Headers: Authorization, Content-Type");
+      response->println("Access-Control-Allow-Credentials: true");
+      response->println("Access-Control-Max-Age: 1000");
     }
     break;
     case 204:
-    response.println("204 OK");
-    response.println("100 continue");
+    response->println("204 OK");
+    response->println("100 continue");
     break;
   }
 }
 
-// body for rest server
-void send_body(const char *body, EthernetClient response){
-  response.println(body);
-}
     //to be checked added
-void uHTTP::send_body(const char *body, EthernetClient response){
-  response.println(body);
+void uHTTP::send_body(const char *body){
+  response->println(body);
 }
 
 //render for rest server
-void uHTTP::render(uint16_t code, uint8_t ctype, EthernetClient response){
-  send_headers(code, ctype, response);
-  response.println("<html lang=\"en\">");
-  response.println("<head>");
-  response.println("<meta http-equiv=\"Cache-control\" content=\"public\">");
-  response.println("<link href='//fonts.googleapis.com/css?family=Lato:100' rel='stylesheet' type='text/css'>");
-  response.println("<style>");                
-  response.println("body{margin: 0; padding: 0; width: 100%; height: 100%; color: #00878F; display: table; font-weight: 100; font-family: 'Lato';}");
-  response.println(".container{text-align: center; display: table-cell; vertical-align: middle;}");
-  response.println(".content {text-align: center; display: inline-block;}");
-  response.println(".title{font-size: 96px; margin-bottom: 40px;}");
-  response.println(".quote{font-size: 24px; font-weight: bold;}");
-  response.println("</style>") ;
-  response.println("<title>uHTTP</title>");
-  response.println("</head>");
-  response.println("<body>");
-  response.println("<div class=\"container\">");
-  response.println("<div class=\"content\">");
+void uHTTP::render(uint16_t code, uint8_t ctype){
+  send_headers(code, ctype);
+  response->println("<html lang=\"en\">");
+  response->println("<head>");
+  response->println("<meta http-equiv=\"Cache-control\" content=\"public\">");
+  response->println("<link href='//fonts.googleapis.com/css?family=Lato:100' rel='stylesheet' type='text/css'>");
+  response->println("<style>");                
+  response->println("body{margin: 0; padding: 0; width: 100%; height: 100%; color: #00878F; display: table; font-weight: 100; font-family: 'Lato';}");
+  response->println(".container{text-align: center; display: table-cell; vertical-align: middle;}");
+  response->println(".content {text-align: center; display: inline-block;}");
+  response->println(".title{font-size: 96px; margin-bottom: 40px;}");
+  response->println(".quote{font-size: 24px; font-weight: bold;}");
+  response->println("</style>") ;
+  response->println("<title>uHTTP</title>");
+  response->println("</head>");
+  response->println("<body>");
+  response->println("<div class=\"container\">");
+  response->println("<div class=\"content\">");
   switch(code){
     case 404:
-    response.println("<div class=\"title\">404 Not Found</div>");
-    response.println("<div class=\"quote\">Ooops! The requested page was not found!</div>");
+    response->println("<div class=\"title\">404 Not Found</div>");
+    response->println("<div class=\"quote\">Ooops! The requested page was not found!</div>");
     break;
     case 500:
-    response.println("<div class=\"title\">500 Internal Server Error</div>");
-    response.println("<div class=\"quote\">Ooops! Something goes wrong!</div>");
+    response->println("<div class=\"title\">500 Internal Server Error</div>");
+    response->println("<div class=\"quote\">Ooops! Something goes wrong!</div>");
     break;
   }
-  response.println("</div>");
-  response.println("</div>");
-  response.println("</body>");
-  response.println("</html>");
+  response->println("</div>");
+  response->println("</div>");
+  response->println("</body>");
+  response->println("</html>");
 }
 
-void uHTTP::render(uint16_t code, const char *body, EthernetClient response){
-  send_headers(code, response);
-  if(body) send_body(body, response);
+void uHTTP::render(uint16_t code, const char *body){
+  send_headers(code);
+  if(body) send_body(body);
 } 
 
 
 //get request
-bool uHTTP::get_request( const char *uri, EthernetClient response){
+bool uHTTP::get_request( const char *uri){
   if((method(uHTTP_METHOD_GET) && (strcmp(this->uri(1), uri) == 0))){
     return true;
   }
@@ -478,8 +598,8 @@ bool uHTTP::get_request( const char *uri, EthernetClient response){
 }
 
 
-bool uHTTP::put_request(const char *uri, EthernetClient response){
-send_headers(200,response);
+bool uHTTP::put_request(const char *uri){
+send_headers(200);
   if(method(uHTTP_METHOD_PUT) && (strcmp(this->uri(1), uri) == 0)){
     return true;
   }
@@ -488,19 +608,30 @@ send_headers(200,response);
   }
 }
 
-void uHTTP::post_JSON(String output, EthernetClient response){
- response.println("HTTP/1.1 200 OK");
- response.println("Access-Control-Allow-Origin:*");
- response.println("Content-Type: application/json");
- response.println();
- response.println(output);
-
+void uHTTP::post_JSON(String *output){
+ response->println("HTTP/1.1 200 OK");
+ response->println("Access-Control-Allow-Origin:*");
+ response->println("Content-Type: application/json");
+ response->println();
+ response->println(*output);
 }
 
-void uHTTP::send_JSON_headers(EthernetClient response){
-  response.println("HTTP/1.1 200 OK");
-  response.println("Access-Control-Allow-Origin:*");
-  response.println("Content-Type: application/json");
-  response.println();
+void uHTTP::send_JSON_headers(){
+  response->println("HTTP/1.1 200 OK");
+  response->println("Access-Control-Allow-Origin:*");
+  response->println("Content-Type: application/json");
+  response->println();
+}
 
+void uHTTP::addToContainer(uint8_t method, uHTTP_request *container, uint8_t sizeArray){
+  switch (method) {
+      case uHTTP_METHOD_GET:
+        container_Get = container;
+        sizeGetContainer = sizeArray;
+        break;
+      case uHTTP_METHOD_PUT:
+        container_Put = container;
+        sizePutContainer = sizeArray;
+        break;      
+  }
 }
