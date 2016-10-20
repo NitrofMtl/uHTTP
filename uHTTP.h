@@ -27,6 +27,10 @@
 #include <SD.h>
 // #define uHTTP_DEBUG
 
+#ifndef home_page
+#define home_page "index.htm"
+#endif
+
 // Sizes
 #define uHTTP_BUFFER_SIZE    255
 #define uHTTP_METHOD_SIZE    8
@@ -36,7 +40,7 @@
 #define uHTTP_TYPE_SIZE      34
 #define uHTTP_ORIG_SIZE      16
 // #define uHTTP_HOST_SIZE      32
-#define uHTTP_BODY_SIZE      255
+#define uHTTP_BODY_SIZE      511
 
 #define uHTTP_METHOD_OPTIONS 0
 #define uHTTP_METHOD_GET     1
@@ -57,6 +61,8 @@
 #define TEXT_JSON   5
 #define X_ICON      6
 
+const uint8_t containerSize = 10;
+
 typedef struct header_t{
     char type[uHTTP_TYPE_SIZE];
     char auth[uHTTP_AUTH_SIZE];
@@ -65,26 +71,42 @@ typedef struct header_t{
     uint16_t length;
 };
 
+/** 
+ * uHTTP request obj container 
+ **/
+
+class uHTTP_request {
+public:
+  uHTTP_request( const char *uId, void (*uCallback)() );
+  const char *id;
+  void (*callback)();
+};
+
 class uHTTP : public EthernetServer {
     private:
-
-
         header_t __head;
-
         uint8_t __method;
-
         char *__uri;
         char *__query;
-
         const char *parse(const char *needle, char *haystack, const char*sep);
-       
+        EthernetClient *response;
+
+        uHTTP_request *container_Get;
+        uHTTP_request *container_Put;
+        uint8_t sizeGetContainer = 0;
+        uint8_t sizePutContainer = 0;
+                      
     public:
+
         char *__body;
         uHTTP();
         uHTTP(uint16_t port);
         ~uHTTP();
 
+        void uHTTPclient(EthernetClient *response);
         EthernetClient available();
+
+        void requestHandler();
 
         header_t head();
 
@@ -101,19 +123,24 @@ class uHTTP : public EthernetServer {
 
         const char *body();
         const char *data(const char *key);
-        void webFile_Post(char url[32], EthernetClient response);
-        void render(uint16_t code, uint8_t ctype , EthernetClient response);
-        void render(uint16_t code, const char *body, EthernetClient response);
-        void send_headers(uint16_t code , uint8_t ctype , EthernetClient response );
-        void send_headers(uint16_t code, EthernetClient response);
-        void send_body(const char *body, EthernetClient response);
-        void send_method_headers(const char *uri, EthernetClient response);
 
-        bool get_request(const char *uri, EthernetClient response);
-        bool put_request(const char *uri, EthernetClient response);
+        bool webFile_Post(char url[32]);
+        bool webFile_Post_Head(char url[32]);
+        void render(uint16_t code, uint8_t ctype);
+        void render(uint16_t code, const char *body);
+        void send_headers(uint16_t code);
+        void send_headers(uint16_t code , uint8_t ctype);
 
-        void post_JSON(String output, EthernetClient response);
-        void send_JSON_headers(EthernetClient response);
+        void send_body(const char *body);
+        void send_method_headers(const char *uri);
+
+        bool get_request(const char *uri);
+        bool put_request(const char *uri);
+
+        void post_JSON(String *output);
+        void send_JSON_headers();
+
+        void addToContainer(uint8_t method, uHTTP_request *container, uint8_t sizeArray);        
 };
 
 #endif
