@@ -47,13 +47,13 @@ EthernetServer server(80);
   Remember to name file on SD on 8.3  format. ( For javascript file, use .jsx extention. )
 
 */
-uHTTP_request getContainer[] = {    //resquest index : (ID, method, callback function)
+uHTTP_request getContainer[] = {    //resquest index : (ID, callback function)
 /* {"ajax_inputs", writeJSONResponse},      //example how list dynamic request list
  {"ajax_alarms", writeJSON_Alarm_Response},
  {"configs", writeJSONConfigResponse} */
 };
 
-uHTTP_request putContainer[] = {    //resquest index : (ID, method, callback function)
+uHTTP_request putContainer[] = {    //resquest index : (ID, callback function)
 /*  {"channels", parseJSONInputs},  //example how list dynamic request list
   {"alarms", parseJSONalarms},
   {"switch", parseJSONswitch},
