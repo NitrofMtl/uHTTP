@@ -360,7 +360,7 @@ void uHTTP::requestHandler(){
       case uHTTP_METHOD_GET:
         if (uri("/") ) {
           strcpy(url, home_page); // if nothing requested, send default page
-          send_headers(200);
+          //send_headers(200);
           if(webFile_Post(url)) break; //send default page
         }
         for(int i=0; i<sizeGetContainer; i++) {     //scan request container
@@ -379,7 +379,7 @@ void uHTTP::requestHandler(){
       case uHTTP_METHOD_HEAD: //identical to GET except that the server MUST NOT return a message-body in the response
         if (uri("/") ) {
           strcpy(url, home_page); // if nothing requested, send default page
-          send_headers(200);
+          //send_headers(200);
           if(webFile_Post_Head(url)) break; //send sd webfile headers
         }
         for(int i=0; i<sizeGetContainer; i++) {     //scan request container
