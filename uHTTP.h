@@ -31,6 +31,24 @@
 #define home_page "index.htm"
 #endif
 
+//#define uHTTP_DEBUG   //unmute to activate serial debugger
+#ifdef uHTTP_DEBUG
+ #define uHTTP_PRINT(x)  Serial.print (x); response->print(x);
+ #define uHTTP_PRINTLN(x) Serial.println (x); response->println(x);
+#else
+ #define uHTTP_PRINT(x)     response->print(x)
+ #define uHTTP_PRINTLN(x)   response->println(x)
+#endif
+
+//#define uHTTP_BODY_DEBUG      //unmute to activate serial debugger
+#ifdef uHTTP_BODY_DEBUG
+ #define uHTTP_BODY_PRINT(x)  Serial.print (x);
+ #define uHTTP_BODY_PRINTLN(x) Serial.println (x);
+#else
+ #define uHTTP_BODY_PRINT(x)
+ #define uHTTP_BODY_PRINTLN(x)
+#endif
+
 // Sizes
 #define uHTTP_BUFFER_SIZE    255
 #define uHTTP_METHOD_SIZE    8

@@ -96,12 +96,21 @@ void uHTTP::uHTTPclient(EthernetClient *response){
     enum header_t {START, AUTHORIZATION, CONTENT_TYPE, CONTENT_LENGTH, ORIGIN};
     header_t header = START;
 
+    uHTTP_BODY_PRINTLN();
+    uHTTP_BODY_PRINTLN();
+    uHTTP_BODY_PRINTLN();
+ 
     while(client.connected() && client.available()){
       char c = client.read();
 
+      if(c == '/r') {
+        uHTTP_BODY_PRINTLN();
+        uHTTP_BODY_PRINT("     "); //tab receive data to ease reading
+      }
+      uHTTP_BODY_PRINT(c);
+
       (c == '\r' || c == '\n') ? cr++ : cr = 0;
-      //if (c == '\r') Serial.println(); //for debuging
-      //Serial.print(c);                  //for debuging
+ 
       switch(state){
        case METHOD:
        if(c == ' '){
@@ -297,8 +306,9 @@ return client;
  *	@return *char body
  **/
  const char *uHTTP::body(){
-   return __body;
-
+    uHTTP_BODY_PRINTLN(        "receive body:");
+    uHTTP_BODY_PRINTLN(__body);
+    return __body;
  }
 
 /**
@@ -346,7 +356,6 @@ void uHTTP::requestHandler(){
 
     bool requestFound = false;
     uint8_t thisMethod = method();
-    //Serial.println("receive request");
     switch (thisMethod) {
       case uHTTP_METHOD_GET:
         if (uri("/") ) {
@@ -368,7 +377,7 @@ void uHTTP::requestHandler(){
         break;
 
       case uHTTP_METHOD_HEAD: //identical to GET except that the server MUST NOT return a message-body in the response
-               if (uri("/") ) {
+        if (uri("/") ) {
           strcpy(url, home_page); // if nothing requested, send default page
           send_headers(200);
           if(webFile_Post_Head(url)) break; //send sd webfile headers
@@ -382,16 +391,15 @@ void uHTTP::requestHandler(){
         }              
         if(requestFound) break;// break if get request have been found on the container
         strcpy(url, uri());
-        if (webFile_Post_Head(url)) break; //send other file headers if they exist on sd card        
+        if (webFile_Post_Head(url)) break; //send sd file headers if they exist on sd card        
         send_headers(404, TEXT_HTML); //if not send error headers
         break;
 
       case uHTTP_METHOD_PUT:
-      //Serial.print("put request= "); Serial.println(this->uri(1));
         for(int i=0; i<sizePutContainer; i++) {
           if(strcmp(this->uri(1), container_Put[i].id) == 0){
             container_Put[i].callback();
-            response->println("HTTP/1.0 200 OK\r\n");
+            uHTTP_PRINTLN("HTTP/1.1 204 No Content\r\n");
             requestFound = true;
             break;
           }
@@ -401,8 +409,25 @@ void uHTTP::requestHandler(){
 
       case uHTTP_METHOD_OPTIONS:
         send_headers(200);
-    }
+        break;
 
+      case uHTTP_METHOD_POST:
+        //break;
+
+      case uHTTP_METHOD_PATCH:
+        //break;
+
+      case uHTTP_METHOD_DELETE:
+        //break;
+
+      case uHTTP_METHOD_TRACE:
+        //break;
+
+      case uHTTP_METHOD_CONNECT:
+        uHTTP_PRINTLN("HTTP/1.1 405 Method Not Allowed");
+        break;  
+    }
+    
   response->stop();
   }
 }
@@ -456,50 +481,50 @@ bool uHTTP::webFile_Post_Head(char url[32]){
 
 // header system for file web file sending
 void uHTTP::send_headers(uint16_t code, uint8_t ctype){
-  response->print("HTTP/1.1 ");
+  uHTTP_PRINT("HTTP/1.1 ");
 
   switch(code){
     case 200:
-    response->println("200 OK");
-    response->println("Access-Control-Allow-Origin: *");
+    uHTTP_PRINTLN("200 OK");
+    uHTTP_PRINTLN("Access-Control-Allow-Origin: *");
     break;
     case 302:
-    response->println("302 Found");
+    uHTTP_PRINTLN("302 Found");
     break;
     case 404:
-    response->println("404 Not Found");
+    uHTTP_PRINTLN("404 Not Found");
     break;
     case 500:
-    response->println("500 Internal Server Error");
+    uHTTP_PRINTLN("500 Internal Server Error");
     break;
   }
 
-  response->print("Content-Type: ");
+  uHTTP_PRINT("Content-Type: ");
   switch(ctype){
     case TEXT_JS:
-    response->println("text/javascript");
+    uHTTP_PRINTLN("text/javascript");
     break;
     case TEXT_CSS:
-    response->println("text/css");
+    uHTTP_PRINTLN("text/css");
     break;
     case TEXT_HTML:
-    response->println("text/html");
+    uHTTP_PRINTLN("text/html");
     break;
     case TEXT_XML:
-    response->println("text/xml");
+    uHTTP_PRINTLN("text/xml");
     break;
     case X_ICON:
-    response->println("image/x-icon");
+    uHTTP_PRINTLN("image/x-icon");
     break;
     case TEXT_JSON:
-    response->println("text/json");
+    uHTTP_PRINTLN("text/json");
     break;
     default:
-    response->println("text/plain");
+    uHTTP_PRINTLN("text/plain");
     break;
   }
-  response->println("Connection: close");
-  response->println();
+  uHTTP_PRINTLN("Connection: close");
+  uHTTP_PRINTLN();
 }
 
 
@@ -517,33 +542,33 @@ void uHTTP::send_method_headers(const char *uri){
 
 //header for rest server
 void uHTTP::send_headers(uint16_t code){
-    header_t head = __head;
+  header_t head = __head;
 
-  response->print("HTTP/1.1");
-  response->print(" ");
+  uHTTP_PRINT("HTTP/1.1 ");
   switch(code){
     case 200:
-    response->println("200 OK");
-    //response.println("Content-Type: application/json");
-    if(strlen(head.orig)){
-      response->print("Access-Control-Allow-Origin: ");
-      response->println(head.orig);
-      response->println("Access-Control-Allow-Methods: GET,PUT,HEAD");
-      response->println("Access-Control-Allow-Headers: Authorization, Content-Type");
-      response->println("Access-Control-Allow-Credentials: true");
-      response->println("Access-Control-Max-Age: 1000");
-    }
+    uHTTP_PRINTLN("200 OK");
+    uHTTP_PRINTLN("Content-Type: application/json");
+    uHTTP_PRINTLN("Access-Control-Allow-Methods: GET, PUT, HEAD");
+    //if(strlen(head.orig)){
+      uHTTP_PRINTLN("Access-Control-Allow-Origin: *");
+      //uHTTP_PRINTLN("Access-Control-Allow-Methods: GET,PUT,HEAD");
+      uHTTP_PRINTLN("Access-Control-Allow-Headers: Authorization, Content-Type");
+      uHTTP_PRINTLN("Access-Control-Allow-Credentials: true");
+      uHTTP_PRINTLN("Access-Control-Max-Age: 1000");
+      //response->println("Access-Control-Allow-Methods: GET,PUT,HEAD");
+    //}
     break;
     case 204:
-    response->println("204 OK");
-    response->println("100 continue");
+    uHTTP_PRINTLN("204 OK");
+    uHTTP_PRINTLN("100 continue");
     break;
   }
 }
 
     //to be checked added
 void uHTTP::send_body(const char *body){
-  response->println(body);
+  uHTTP_PRINTLN(body);
 }
 
 //render for rest server
@@ -609,18 +634,18 @@ send_headers(200);
 }
 
 void uHTTP::post_JSON(String *output){
- response->println("HTTP/1.1 200 OK");
- response->println("Access-Control-Allow-Origin:*");
- response->println("Content-Type: application/json");
- response->println();
- response->println(*output);
+  uHTTP_PRINTLN("HTTP/1.1 200 OK");
+  uHTTP_PRINTLN("Access-Control-Allow-Origin:*");
+  uHTTP_PRINTLN("Content-Type: application/json");
+  uHTTP_PRINTLN();
+  uHTTP_PRINTLN(*output);
 }
 
 void uHTTP::send_JSON_headers(){
-  response->println("HTTP/1.1 200 OK");
-  response->println("Access-Control-Allow-Origin:*");
-  response->println("Content-Type: application/json");
-  response->println();
+  uHTTP_PRINTLN("HTTP/1.1 200 OK");
+  uHTTP_PRINTLN("Access-Control-Allow-Origin:*");
+  uHTTP_PRINTLN("Content-Type: application/json");
+  uHTTP_PRINTLN();
 }
 
 void uHTTP::addToContainer(uint8_t method, uHTTP_request *container, uint8_t sizeArray){
