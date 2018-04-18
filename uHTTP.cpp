@@ -353,18 +353,24 @@ void uHTTP::requestHandler(){
 
   char url[uHTTP_URI_SIZE];
   if (*response = available()) {
-
+    if (!response->connected()) {
+      response->stop();
+      return;
+    }
     bool requestFound = false;
     uint8_t thisMethod = method();
     switch (thisMethod) {
       case uHTTP_METHOD_GET:
         if (uri("/") ) {
           strcpy(url, home_page); // if nothing requested, send default page
-          //send_headers(200);
           if(webFile_Post(url)) break; //send default page
         }
         for(int i=0; i<sizeGetContainer; i++) {     //scan request container
           if(strcmp(this->uri(1), container_Get[i].id) == 0){
+            if (!response->connected()) {
+              response->stop();
+              return;
+            }
             container_Get[i].callback();
             requestFound = true;
             break;
@@ -379,7 +385,6 @@ void uHTTP::requestHandler(){
       case uHTTP_METHOD_HEAD: //identical to GET except that the server MUST NOT return a message-body in the response
         if (uri("/") ) {
           strcpy(url, home_page); // if nothing requested, send default page
-          //send_headers(200);
           if(webFile_Post_Head(url)) break; //send sd webfile headers
         }
         for(int i=0; i<sizeGetContainer; i++) {     //scan request container
@@ -396,10 +401,15 @@ void uHTTP::requestHandler(){
         break;
 
       case uHTTP_METHOD_PUT:
+        send_headers(200);
         for(int i=0; i<sizePutContainer; i++) {
           if(strcmp(this->uri(1), container_Put[i].id) == 0){
+            if (!response->connected()) {
+              response->stop();
+              return;
+            }
             container_Put[i].callback();
-            uHTTP_PRINTLN("HTTP/1.1 204 No Content\r\n");
+            uHTTP_PRINTLN();uHTTP_PRINTLN("{}");
             requestFound = true;
             break;
           }
@@ -488,6 +498,8 @@ void uHTTP::send_headers(uint16_t code, uint8_t ctype){
     uHTTP_PRINTLN("200 OK");
     uHTTP_PRINTLN("Access-Control-Allow-Origin: *");
     break;
+    case 204:
+    uHTTP_PRINTLN("204 No Content\r\n");
     case 302:
     uHTTP_PRINTLN("302 Found");
     break;
@@ -560,7 +572,7 @@ void uHTTP::send_headers(uint16_t code){
     //}
     break;
     case 204:
-    uHTTP_PRINTLN("204 OK");
+    uHTTP_PRINTLN("204 No Content\r\n");
     uHTTP_PRINTLN("100 continue");
     break;
   }
