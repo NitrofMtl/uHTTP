@@ -59,7 +59,7 @@
 #define uHTTP_ORIG_SIZE      16
 // #define uHTTP_HOST_SIZE      32
 #define uHTTP_BODY_SIZE      511
-
+/*
 #define uHTTP_METHOD_OPTIONS 0
 #define uHTTP_METHOD_GET     1
 #define uHTTP_METHOD_HEAD    2
@@ -68,16 +68,18 @@
 #define uHTTP_METHOD_PATCH   5
 #define uHTTP_METHOD_DELETE  6
 #define uHTTP_METHOD_TRACE   7
-#define uHTTP_METHOD_CONNECT 8
+#define uHTTP_METHOD_CONNECT 8*/
+enum method_t {OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE, TRACE, CONNECT};
 
-
+/*
 #define TEXT_PLAIN  0
 #define TEXT_HTML   1
 #define TEXT_JS     2
 #define TEXT_CSS    3
 #define TEXT_XML    4
 #define TEXT_JSON   5
-#define X_ICON      6
+#define X_ICON      6*/
+enum content_t {TEXT_PLAIN, TEXT_HTML, TEXT_JS, TEXT_CSS, TEXT_XML, TEXT_JSON, X_ICON};
 
 const uint8_t containerSize = 10;
 
@@ -103,7 +105,7 @@ public:
 class uHTTP : public EthernetServer {
     private:
         header_t __head;
-        uint8_t __method;
+        method_t __method;
         char *__uri;
         char *__query;
         const char *parse(const char *needle, char *haystack, const char*sep);
@@ -128,8 +130,8 @@ class uHTTP : public EthernetServer {
 
         header_t head();
 
-        uint8_t method();
-        bool method(uint8_t type);
+        method_t method();
+        bool method(method_t type);
 
         const char *uri();
         const char *uri(uint8_t segment);
@@ -144,10 +146,10 @@ class uHTTP : public EthernetServer {
 
         bool webFile_Post(char url[32]);
         bool webFile_Post_Head(char url[32]);
-        void render(uint16_t code, uint8_t ctype);
+        void render(uint16_t code, content_t ctype);
         void render(uint16_t code, const char *body);
         void send_headers(uint16_t code);
-        void send_headers(uint16_t code , uint8_t ctype);
+        void send_headers(uint16_t code , content_t ctype);
 
         void send_body(const char *body);
         void send_method_headers(const char *uri);
@@ -158,7 +160,7 @@ class uHTTP : public EthernetServer {
         void post_JSON(String *output);
         void send_JSON_headers();
 
-        void addToContainer(uint8_t method, uHTTP_request *container, uint8_t sizeArray);        
+        void addToContainer(method_t method, uHTTP_request *container, uint8_t sizeArray);        
 };
 
 #endif
