@@ -33,8 +33,8 @@
 
 //#define uHTTP_DEBUG   //unmute to activate serial debugger
 #ifdef uHTTP_DEBUG
- #define uHTTP_PRINT(x)  Serial.print (x); response->print(x);
- #define uHTTP_PRINTLN(x) Serial.println (x); response->println(x);
+ #define uHTTP_PRINT(x)  Serial.print(x); response->print(x);
+ #define uHTTP_PRINTLN(x) Serial.println(x); response->println(x);
 #else
  #define uHTTP_PRINT(x)     response->print(x)
  #define uHTTP_PRINTLN(x)   response->println(x)
@@ -59,26 +59,9 @@
 #define uHTTP_ORIG_SIZE      16
 // #define uHTTP_HOST_SIZE      32
 #define uHTTP_BODY_SIZE      511
-/*
-#define uHTTP_METHOD_OPTIONS 0
-#define uHTTP_METHOD_GET     1
-#define uHTTP_METHOD_HEAD    2
-#define uHTTP_METHOD_POST    3
-#define uHTTP_METHOD_PUT     4
-#define uHTTP_METHOD_PATCH   5
-#define uHTTP_METHOD_DELETE  6
-#define uHTTP_METHOD_TRACE   7
-#define uHTTP_METHOD_CONNECT 8*/
+
 enum method_t {OPTIONS, GET, HEAD, POST, PUT, PATCH, DELETE, TRACE, CONNECT};
 
-/*
-#define TEXT_PLAIN  0
-#define TEXT_HTML   1
-#define TEXT_JS     2
-#define TEXT_CSS    3
-#define TEXT_XML    4
-#define TEXT_JSON   5
-#define X_ICON      6*/
 enum content_t {TEXT_PLAIN, TEXT_HTML, TEXT_JS, TEXT_CSS, TEXT_XML, TEXT_JSON, X_ICON};
 
 const uint8_t containerSize = 10;

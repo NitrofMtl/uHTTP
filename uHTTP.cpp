@@ -85,7 +85,6 @@ EthernetClient uHTTP::available() {
   memset(__body, 0, sizeof(__body));
   memset(&__head, 0, sizeof(__head));
 
-  //if (client = EthernetServer::available()) {
   if ( !(client = EthernetServer::available()) ) return client;
   uint16_t cursor = 0, cr = 0;
   char buffer[uHTTP_BUFFER_SIZE] = {0};
@@ -365,7 +364,7 @@ const char *uHTTP::parse(const char *needle, char *haystack, const char *sep) {
 void uHTTP::requestHandler() {
 
   char url[uHTTP_URI_SIZE];
-  //if (*response = available()) {
+
   if ( !(*response = available()) ) return;
   if (!response->connected()) {
     response->stop();
@@ -373,7 +372,6 @@ void uHTTP::requestHandler() {
   }
   bool requestFound = false;
   method_t thisMethod = method();
-  //uint8_t thisMethod = method();
   switch (thisMethod) {
     case GET:
       if (uri("/") ) {
@@ -454,7 +452,6 @@ void uHTTP::requestHandler() {
   }
 
   response->stop();
-  //}
 }
 
 bool uHTTP::webFile_Post(char url[32]) {
